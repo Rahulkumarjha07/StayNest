@@ -7,6 +7,7 @@ const methodOverride = require("method-override");
 const ejsMate = require("ejs-mate");
 
 const Listing = require("./models/listing");
+const Review  = require("./models/review");
 
 // DB
 mongoose.connect("mongodb://127.0.0.1:27017/wanderlast")
@@ -47,7 +48,7 @@ app.post("/listings", async (req, res,next) => {
 
 // SHOW
 app.get("/listings/:id", async (req, res) => {
-  const listing = await Listing.findById(req.params.id);
+  const listing = await Listing.findById(req.params.id).populate("reviews");
   res.render("listing/show", { listing });
 });
 
@@ -69,9 +70,27 @@ app.delete("/listings/:id", async (req, res) => {
   res.redirect("/listings");
 });
 
-app.use((res,req,err)=>{
-  res.send("something went weong");
+///reviews
+//review post route
+
+// Review POST Route
+app.post("/listings/:id/reviews", async (req, res) => {
+
+  const listing = await Listing.findById(req.params.id) .populate("reviews");
+
+  const newReview = new Review(req.body.review);
+
+  listing.reviews.push(newReview);
+
+  await newReview.save();
+  await listing.save();
+
+  console.log(newReview);
+
+ res.redirect(`/listings/${listing._id}`);
+
 });
+
 
 app.listen(8080, () => {
   console.log("server is listening on port 8080");

@@ -38,7 +38,87 @@
       <a href="/listings" class="btn back-btn">
         ⬅ Back to Listings
       </a>
+
+
     </div>
 
   </div>
+ <hr>
+  <div class="mb-3 mt-3">
+    <h4>Leave a review</h4>
+    <form action="/listings/<%= listing._id %>/reviews" 
+      method="POST" 
+      class="needs-validation" 
+      novalidate>
+
+  <!-- Rating -->
+  <div class="mb-3">
+    <label class="form-label">Rating</label>
+    <input 
+      type="number" 
+      name="review[rating]" 
+      class="form-control" 
+      min="1" 
+      max="5" 
+      required>
+
+    <div class="invalid-feedback">
+      Please enter a rating between 1 and 5.
+    </div>
+  </div>
+
+  <!-- Comment -->
+  <div class="mb-3">
+    <label class="form-label">Comment</label>
+    <textarea 
+      name="review[comment]" 
+      class="form-control" 
+      required></textarea>
+
+    <div class="invalid-feedback">
+      Comment cannot be empty.
+    </div>
+  </div>
+
+  <button class="btn btn-dark">Submit Review</button>
+</form>
+
+<h4 class="mt-4 mb-3">Reviews</h4>
+
+<div class="row">
+  <% for(let review of listing.reviews){ %>
+    
+    <div class="col-md-6 mb-3">
+      <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          
+          <!-- Stars -->
+          <div>
+            <% for(let i = 1; i <= 5; i++){ %>
+              <% if(i <= review.rating){ %>
+                <span class="text-warning fs-5">★</span>
+              <% } else { %>
+                <span class="text-muted fs-5">★</span>
+              <% } %>
+            <% } %>
+          </div>
+
+          <!-- Date -->
+          <small class="text-muted">
+            <%= review.createdAt.toDateString() %>
+          </small>
+        </div>
+
+        <!-- Comment -->
+        <p class="mb-0"><%= review.comment %></p>
+
+      </div>
+    </div>
+
+  <% } %>
+</div>
+
+</div>
+
 </div>
