@@ -9,6 +9,7 @@ const ejsMate = require("ejs-mate");
 const Listing = require("./models/listing");
 const Review  = require("./models/review");
 
+
 // DB
 mongoose.connect("mongodb://127.0.0.1:27017/wanderlast")
   .then(() => console.log("Connected!"));
@@ -23,8 +24,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride("_method"));
 app.use(express.static(path.join(__dirname, "public")));
 
+const listings = require("./routes/listings.js");
+
+const reviews = require("./routes/review.js");
+
+app.use("/listings",listings);
+app.use("/listings/:id/reviews",reviews);
+
 // INDEX
-app.get("/listings", async (req, res) => {
+ /* app.get("/listings", async (req, res) => {
   const allistings = await Listing.find({});
   res.render("listing/index", { allistings });
 });
@@ -70,6 +78,8 @@ app.delete("/listings/:id", async (req, res) => {
   res.redirect("/listings");
 });
 
+
+
 ///reviews
 //review post route
 
@@ -90,6 +100,8 @@ app.post("/listings/:id/reviews", async (req, res) => {
  res.redirect(`/listings/${listing._id}`);
 
 });
+
+*/
 
 
 app.listen(8080, () => {
