@@ -6,7 +6,7 @@ router.get("/", (req, res) => {
   res.render("users/signup");
 });
 
-router.post("/", async (req, res) => {
+router.post("/", async (req, res, next) => {
   try {
     let { username, email, password } = req.body;
 
@@ -14,20 +14,21 @@ router.post("/", async (req, res) => {
 
     const registeredUser = await User.register(newUser, password);
 
-    console.log(registeredUser);
+   req.login(registeredUser, (err) => {
+  if (err) return next(err);
 
-    req.flash("success", "Welcome to WanderLust!");
-    res.redirect("/listings");
+  req.flash("success", "Welcome to WanderLust!");
+
+  const redirectUrl = req.session.redirectUrl || "/listings";
+  delete req.session.redirectUrl;
+
+  return res.redirect(redirectUrl);
+});
 
   } catch (e) {
     req.flash("error", e.message);
     res.redirect("/signup");
   }
 });
-
-
-
-
-
 
 module.exports = router;

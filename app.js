@@ -81,26 +81,30 @@ app.use((req, res, next) => {
 
   res.locals.success = success.length > 0 ? success[0] : null;
   res.locals.error = error.length > 0 ? error[0] : null;
+  res.locals.curruser = req.user;
 
   next();
 });
 
-app.get("/demo",async   (req,res)=>{
-     const fakeuser = new user({
-      email:"rahulkumarjha5231662@gmail.com",
-      username:"rahul",
-     });
-     const newuser = await user.register(fakeuser,"helloworld");
-     res.send(newuser);
-});
+
 
 
 
 app.use("/listings",listings);
-app.use("/listings/:id/reviews",reviews);
+app.use("/listings/:id/reviews", reviews);
 app.use("/signup",userRoute);
 
 app.use("/login",login);
+
+app.get("/logout",(req,res,next)=>{
+   req.logout((err) => {
+    if(err){
+       return next(err);
+    }
+    req.flash("success","you are succesfully logged out");
+    res.redirect("/listings");
+   });
+});
 
 
 

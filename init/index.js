@@ -9,6 +9,7 @@ const Listing = require('../models/listing.js');
 
 const initDB = async () => {
   await Listing.deleteMany({});
+  initDb.data = initDb.data.map((obj)=>({...obj,owner:'696685123aebcadea7756a5d'}));
   await Listing.insertMany(initDb.data);
   console.log("Database Initialized with sample data");
 }

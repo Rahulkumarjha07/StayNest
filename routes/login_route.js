@@ -1,12 +1,25 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../models/user.js");
+const passport = require("passport");
+const { redirectUrl } = require("../middleware");
 
-router.get("/",(req,res)=>{
- 
-  res.render("users/login.ejs");
+// GET Login
+router.get("/", (req, res) => {
+  res.render("users/login");
 });
 
-router.post("/",)
+// POST Login
+router.post(
+  "/",
+  passport.authenticate("local", {
+    failureRedirect: "/login",
+    failureFlash: true,
+  }),
+  redirectUrl,   //  after authentication
+  (req, res) => {
+    req.flash("success", "Welcome back to WanderLast!");
+    res.redirect(res.locals.redirectUrl || "/listings"); // 
+  }
+);
 
 module.exports = router;
