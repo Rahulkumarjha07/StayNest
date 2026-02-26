@@ -1,49 +1,34 @@
 const mongoose = require("mongoose");
+const Review = require("./review");
 
 const listingSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true,          
-    trim: true
-  },
-  description: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  price: {
-    type: Number,
-    required: true,
-    min: 0
-  },
+  title: String,
+  description: String,
+  price: Number,
   image: {
-    filename: {
-      type: String,
-      default: "listingimage"
-    },
-    url: {
-      type: String,
-      required: true
+    url: String
+  },
+  location: String,
+  country: String,
+  reviews: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Review"   // ✅ MUST BE CAPITAL R
     }
-  },
-  location: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  country: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  reviews:[{
-    type:mongoose.Schema.Types.ObjectId,
-    ref:"Review"
-  }],
-   owner:{
-    type:mongoose.Schema.Types.ObjectId,
-    ref: "user",
-   },
+  ],
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"      // ✅ MUST BE CAPITAL U
+  }
+});
+
+// 🔥 Cascade delete
+listingSchema.post("findOneAndDelete", async (listing) => {
+  if (listing) {
+    await Review.deleteMany({
+      _id: { $in: listing.reviews }
+    });
+  }
 });
 
 module.exports = mongoose.model("Listing", listingSchema);
