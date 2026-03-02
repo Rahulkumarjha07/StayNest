@@ -35,9 +35,7 @@ const MongoStore = require("connect-mongo");
 
 const store = MongoStore.create({
   mongoUrl: process.env.MONGO_URL,
-  crypto: {
-    secret: process.env.SECRET,
-  },
+  
   touchAfter: 24 * 3600,
 });
 
