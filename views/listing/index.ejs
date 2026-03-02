@@ -1,27 +1,119 @@
 <% layout("layouts/boilerplate") %>
-<%= success %>
-<h3>All Listings</h3>
-<div class="row row-cols-lg-3 row-cols-md-2 row-cols-sm-1">
-  <% for (let listing of allistings) { %>
-    <a href="/listings/<%= listing._id %>" style="text-decoration: none; color: black;">
-<div class="card  col" >
-  <img src="<%= listing.image.url %>" class="card-img-top" alt="...">
 
-  <div class="card-body">
-    <b><p class="card-text"><%= listing.title %></p></b>
-    <br>
-    <strong>Price:</strong> $<%= listing.price %>
-    <br>
-    <strong>Location:</strong> <%= listing.location %>
-    <br>
-    <strong>Country:</strong> <%= listing.country %>
-  </p>
+<div class="search-bar-container">
+
+  <!-- FORM START -->
+  <form action="/listings" method="GET" id="searchForm">
+
+    <div class="search-bar">
+
+      <!-- WHERE -->
+      <div class="search-section" id="whereBtn">
+        <span class="label">Where</span>
+        <span class="placeholder" id="destinationText">
+          Search destinations
+        </span>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- WHEN -->
+      <div class="search-section" id="dateBtn">
+        <span class="label">When</span>
+        <span class="placeholder" id="dateText">
+          Add dates
+        </span>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- WHO -->
+      <div class="search-section" id="guestBtn">
+        <span class="label">Who</span>
+        <span class="placeholder" id="guestText">
+          Add guests
+        </span>
+      </div>
+
+      <!-- SEARCH BUTTON -->
+      <button type="submit" class="search-btn">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        Search
+      </button>
+
+    </div>
+
+    <!-- HIDDEN INPUTS FOR BACKEND -->
+    <input type="hidden" name="destination" id="destinationInput">
+    <input type="hidden" name="checkin" id="checkinInput">
+    <input type="hidden" name="checkout" id="checkoutInput">
+    <input type="hidden" name="guests" id="guestInput">
+
+    <!-- Flatpickr hidden input -->
+    <input type="text" id="dateRange" hidden>
+
+  </form>
+  <!-- FORM END -->
+
+  <!-- DROPDOWNS -->
+  <div class="dropdown-panel" id="destinationPanel">
+    <h6>Suggested destinations</h6>
+    <div class="dest-item">Chandigarh</div>
+    <div class="dest-item">New Delhi</div>
+    <div class="dest-item">Jaipur</div>
+    <div class="dest-item">Shimla</div>
   </div>
-</div>
- <% } %>
+
+  <div class="dropdown-panel" id="guestPanel">
+
+    <div class="guest-row">
+      <span>Adults</span>
+      <div class="counter">
+        <button type="button" onclick="changeGuest('adults',-1)">-</button>
+        <span id="adults">0</span>
+        <button type="button" onclick="changeGuest('adults',1)">+</button>
+      </div>
+    </div>
+
+    <div class="guest-row">
+      <span>Children</span>
+      <div class="counter">
+        <button type="button" onclick="changeGuest('children',-1)">-</button>
+        <span id="children">0</span>
+        <button type="button" onclick="changeGuest('children',1)">+</button>
+      </div>
+    </div>
+
+  </div>
+
 </div>
 
-<form method="get" action="/listings/new">
-  <button type="submit">New Listing</button>
-</form>
- 
+<div class="listing-container">
+  <% for (let listing of allistings) { %>
+    <a href="/listings/<%= listing._id %>" class="listing-link">
+
+      <div class="listing-card">
+
+        <!-- Image Section -->
+        <div class="image-wrapper">
+          <img src="<%= listing.image.url %>" alt="listing">
+
+          
+
+          <div class="heart">
+            <i class="fa-regular fa-heart"></i>
+          </div>
+        </div>
+
+        <!-- Info Section -->
+        <div class="listing-info">
+          <h5><%= listing.location %>, <%= listing.country %></h5>
+          <p class="title"><%= listing.title %></p>
+          <p class="price">₹<%= listing.price %> <span>night</span></p>
+        </div>
+
+      </div>
+
+    </a>
+  <% } %>
+</div>

@@ -3,7 +3,7 @@
 <div class="form-container">
   <h2 class="form-title">Edit Listing</h2>
 
-  <form method="post" action="/listings/<%= listing._id %>?_method=PUT" class="listing-form">
+  <form method="post" action="/listings/<%= listing._id %>?_method=PUT" class="listing-form" enctype="multipart/form-data">
 
     <div class="form-group">
       <label for="title">Title</label>
@@ -34,14 +34,12 @@
     </div>
 
     <div class="form-group">
-      <label for="image">Image URL</label>
-      <input
-        type="text"
-        id="image"
-        name="listing[image][url]"
-        value="<%= listing.image.url %>"
-        required>
-    </div>
+  <label for="image">Upload New Image</label>
+  <input
+    type="file"
+    id="image"
+    name="image">
+</div>
 
     <div class="form-group">
       <label for="location">Location</label>

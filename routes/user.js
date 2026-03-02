@@ -17,7 +17,7 @@ router.post("/", async (req, res, next) => {
    req.login(registeredUser, (err) => {
   if (err) return next(err);
 
-  req.flash("success", "Welcome to WanderLust!");
+  req.flash("success", "Welcome to StayHub!");
 
   const redirectUrl = req.session.redirectUrl || "/listings";
   delete req.session.redirectUrl;

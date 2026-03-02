@@ -1,32 +1,52 @@
-<nav class="navbar navbar-expand-md navbar-light bg-light border-bottom mb-4 sticky-top">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="/">
+<nav class="navbar navbar-expand-md custom-navbar sticky-top">
+  <div class="container-fluid px-4">
+
+    <!-- Brand -->
+    <a class="navbar-brand brand-logo" href="/listings">
       <i class="fa-solid fa-compass"></i>
+      <span>StayHub</span>
     </a>
 
-    <button class="navbar-toggler" type="button"
+    <!-- Toggle -->
+    <button class="navbar-toggler border-0 shadow-none"
+      type="button"
       data-bs-toggle="collapse"
       data-bs-target="#navbarNavAltMarkup">
       <span class="navbar-toggler-icon"></span>
     </button>
 
     <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+
+      <!-- Left -->
       <div class="navbar-nav">
-        <a class="nav-link" href="/">Home</a>
-        <a class="nav-link" href="/listings">All Listings</a>
-        <a class="nav-link" href="/listings/new">Add New Listing</a>
+        <a class="nav-link nav-hover" href="/listings">Explore</a>
       </div>
-      <div class="navbar-nav ms-auto">
+
+      <!-- Right -->
+      <div class="navbar-nav ms-auto align-items-center gap-2">
+
+        <a class="btn host-btn" href="/listings/new">
+          StayHub your home
+        </a>
+
         <% if(!curruser){ %>
 
-        <a class="nav-link " href="/signup">Sign up</a>
-        <a class="nav-link" href="/login">Login</a>
-        <% } %>
-        <% if(curruser){ %>
+          <a class="btn btn-outline-dark rounded-pill px-4" href="/signup">
+            Sign up
+          </a>
 
-        <a class="nav-link" href="/logout">Logout</a>
+          <a class="btn login-btn rounded-pill px-4" href="/login">
+            Login
+          </a>
+
+        <% } else { %>
+
+          <a class="btn logout-btn rounded-pill px-4" href="/logout">
+            Logout
+          </a>
+
         <% } %>
-        
+
       </div>
     </div>
   </div>

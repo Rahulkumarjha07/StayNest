@@ -2,16 +2,19 @@
 
 <div class="details-container">
 
+  <!-- ================= LISTING TITLE ================= -->
   <h2 class="details-title"><%= listing.title %></h2>
 
   <div class="details-card">
 
+    <!-- Image -->
     <img
       src="<%= listing.image.url %>"
       alt="Listing Image"
       class="details-image"
     />
 
+    <!-- Info -->
     <div class="details-info">
       <p class="description"><%= listing.description %></p>
 
@@ -27,19 +30,19 @@
           ✏️ Edit Listing
         </a>
 
-        <form method="post"
+        <form method="POST"
               action="/listings/<%= listing._id %>?_method=DELETE"
               class="delete-form">
           <button class="btn delete-btn">
             🗑️ Delete Listing
           </button>
         </form>
+
         <a href="/listings" class="btn back-btn">
           ⬅ Back to Listings
         </a>
       </div>
-    
-
+   
 
   </div>
 
@@ -47,10 +50,13 @@
 
   <!-- ================= REVIEW SECTION ================= -->
 
+ 
+
+
   <% if (curruser) { %>
 
-    <div class="mb-3 mt-3">
-      <h4>Leave a review</h4>
+    <div class="mb-4 mt-4">
+      <h4>Leave a Review</h4>
 
       <form action="/listings/<%= listing._id %>/reviews"
             method="POST"
@@ -59,7 +65,7 @@
 
         <!-- Rating -->
         <div class="mb-3">
-          <label class="form-label">Rating</label>
+          <label class="form-label">Rating (1-5)</label>
           <input type="number"
                  name="review[rating]"
                  class="form-control"
@@ -84,6 +90,7 @@
   <% } else { %>
     <p>Please <a href="/login">login</a> to leave a review.</p>
   <% } %>
+
 
   <!-- ================= REVIEW LIST ================= -->
 
@@ -115,7 +122,7 @@
 
           <p class="mb-0"><%= review.comment %></p>
 
-          <!-- Delete Review (Author Only) -->
+          <!-- Delete Review -->
           <% if (curruser && review.author && review.author.equals(curruser._id)) { %>
             <form method="POST"
                   action="/listings/<%= listing._id %>/reviews/<%= review._id %>?_method=DELETE">
@@ -131,4 +138,29 @@
     <% } %>
   </div>
 
+
+  
+
+  
+<!-- ================= MAP SCRIPT ================= -->
+
+<div class="map-wrapper">
+  <h4>Where you will be</h4>
+  <div id="map"></div>
 </div>
+
+ <link href="https://api.mapbox.com/mapbox-gl-js/v3.19.0/mapbox-gl.css" rel="stylesheet" />
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.19.0/mapbox-gl.js"></script>
+
+<script>
+  window.mapToken = "<%= mapToken %>";
+
+  window.listingData = {
+    coordinates: JSON.parse('<%- JSON.stringify(listing.geometry.coordinates) %>'),
+    title: "<%= listing.title %>",
+    location: "<%= listing.location %>"
+  };
+</script>
+
+<script src="/js/map.js"></script>
+

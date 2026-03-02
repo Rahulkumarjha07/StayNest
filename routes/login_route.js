@@ -17,7 +17,7 @@ router.post(
   }),
   redirectUrl,   //  after authentication
   (req, res) => {
-    req.flash("success", "Welcome back to WanderLast!");
+    req.flash("success", "Welcome back to StayHub!");
     res.redirect(res.locals.redirectUrl || "/listings"); // 
   }
 );

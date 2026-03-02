@@ -1,3 +1,9 @@
+
+
+  require("dotenv").config();
+
+
+
 const express = require("express");
 const app = express();
 const session = require("express-session");
@@ -14,26 +20,40 @@ const Review  = require("./models/review");
 
 
 // DB
-mongoose.connect("mongodb://127.0.0.1:27017/wanderlast")
-  .then(() => console.log("Connected!"));
+mongoose.connect(process.env.MONGO_URL)
+  .then(() => console.log("Connected to Atlas!"))
+  .catch((err) => console.log(err));
 
 // View Engine
 app.engine("ejs", ejsMate);
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
+app.use(express.static(path.join(__dirname, "public")));
+
 
 //sessionoptions
 
-const sessionoption = {
-  secret:"mysecretcodekey",
-    resave: false,
-    saveUninitialized: false,
-    cookie:{
-      expires:Date.now() + 7 *60 *60 *24 *1000,
-      maxAge:1000* 60 *60 *24 *3,
-      httpOnly:true
-    },
 
+const MongoStore = require("connect-mongo");
+
+const store = MongoStore.create({
+  mongoUrl: process.env.MONGO_URL,
+  crypto: {
+    secret: process.env.secret,
+  },
+  touchAfter: 24 * 3600,
+});
+
+const sessionoption = {
+  store: store,
+  secret:process.env.secret,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+  },
 };
 
 app.use(session(sessionoption));
@@ -44,7 +64,7 @@ app.use(flash());
 // Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride("_method"));
-app.use(express.static(path.join(__dirname, "public")));
+
 
 const listings = require("./routes/listings.js");
 
@@ -183,6 +203,18 @@ app.post("/listings/:id/reviews", async (req, res) => {
 });
 
 */
+
+
+app.use((err, req, res, next) => {
+  console.log("===== ERROR START =====");
+  console.log(err);
+  console.log("===== ERROR END =====");
+
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Something Went Wrong!";
+
+  res.status(statusCode).render("error", { message });
+});
 
 
 app.listen(8080, () => {
