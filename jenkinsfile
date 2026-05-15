@@ -44,31 +44,32 @@ pipeline {
             }
         }
 
-        stage('Create Kubernetes Secret') {
-            steps {
+       stage('Create Kubernetes Secret') {
+    steps {
 
-                withCredentials([
-                    string(credentialsId: 'mongo-url', variable: 'MONGO_URL'),
-                    string(credentialsId: 'mapbox-token', variable: 'MAPBOX_TOKEN'),
-                    string(credentialsId: 'cloudinary-name', variable: 'CLOUD_NAME'),
-                    string(credentialsId: 'cloudinary-key', variable: 'API_KEY'),
-                    string(credentialsId: 'cloudinary-secret', variable: 'API_SECRET'),
-                    string(credentialsId: 'session-secret', variable: 'SECRET')
-                ]) {
+        withCredentials([
+            string(credentialsId: 'mongo-url', variable: 'MONGO_URL'),
+            string(credentialsId: 'mapbox-token', variable: 'MAPBOX_TOKEN'),
+            string(credentialsId: 'cloudinary-name', variable: 'CLOUD_NAME'),
+            string(credentialsId: 'cloudinary-key', variable: 'API_KEY'),
+            string(credentialsId: 'cloudinary-secret', variable: 'API_SECRET'),
+            string(credentialsId: 'session-secret', variable: 'SECRET')
+        ]) {
 
-                    sh '''
-                    kubectl create secret generic staynest-secret \
-                    --from-literal=MONGO_URL=$MONGO_URL \
-                    --from-literal=MAPBOX_TOKEN=$MAPBOX_TOKEN \
-                    --from-literal=CLOUD_NAME=$CLOUD_NAME \
-                    --from-literal=API_KEY=$API_KEY \
-                    --from-literal=API_SECRET=$API_SECRET \
-                    --from-literal=SECRET=$SECRET \
-                    --dry-run=client -o yaml | kubectl apply -f -
-                    '''
-                }
-            }
+            sh '''
+            kubectl delete secret staynest-secret --ignore-not-found
+
+            kubectl create secret generic staynest-secret \
+            --from-literal=MONGO_URL=$MONGO_URL \
+            --from-literal=MAPBOX_TOKEN=$MAPBOX_TOKEN \
+            --from-literal=CLOUD_NAME=$CLOUD_NAME \
+            --from-literal=API_KEY=$API_KEY \
+            --from-literal=API_SECRET=$API_SECRET \
+            --from-literal=SECRET=$SECRET
+            '''
         }
+    }
+}
 
         stage('Build & Push Docker Image') {
             steps {
