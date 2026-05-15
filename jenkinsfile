@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
         IMAGE = "vyshnavi1411/staynest:v3"
         AWS_REGION = "ap-south-1"
         CLUSTER_NAME = "staynest-cluster"
@@ -11,7 +12,7 @@ pipeline {
 
         stage('Clone Repository') {
             steps {
-                git 'https://github.com/your-repo.git'
+                git 'https://github.com/Rahulkumarjha07/StayNest.git'
             }
         }
 
@@ -41,7 +42,7 @@ pipeline {
             }
         }
 
-        stage('Install Ingress') {
+        stage('Install Ingress Controller') {
             steps {
                 sh '''
                 kubectl apply -f \
@@ -50,8 +51,35 @@ pipeline {
             }
         }
 
+        stage('Create Kubernetes Secret') {
+            steps {
+
+                withCredentials([
+                    string(credentialsId: 'mongo-url', variable: 'MONGO_URL'),
+                    string(credentialsId: 'mapbox-token', variable: 'MAPBOX_TOKEN'),
+                    string(credentialsId: 'cloudinary-name', variable: 'CLOUD_NAME'),
+                    string(credentialsId: 'cloudinary-key', variable: 'API_KEY'),
+                    string(credentialsId: 'cloudinary-secret', variable: 'API_SECRET'),
+                    string(credentialsId: 'session-secret', variable: 'SECRET')
+                ]) {
+
+                    sh '''
+                    kubectl create secret generic staynest-secret \
+                    --from-literal=MONGO_URL=$MONGO_URL \
+                    --from-literal=MAPBOX_TOKEN=$MAPBOX_TOKEN \
+                    --from-literal=CLOUD_NAME=$CLOUD_NAME \
+                    --from-literal=API_KEY=$API_KEY \
+                    --from-literal=API_SECRET=$API_SECRET \
+                    --from-literal=SECRET=$SECRET \
+                    --dry-run=client -o yaml | kubectl apply -f -
+                    '''
+                }
+            }
+        }
+
         stage('Build & Push Docker Image') {
             steps {
+
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub-creds',
                     usernameVariable: 'DOCKER_USER',
@@ -61,6 +89,8 @@ pipeline {
                     sh '''
                     echo $DOCKER_PASS | docker login \
                     -u $DOCKER_USER --password-stdin
+
+                    docker buildx create --use || true
 
                     docker buildx build \
                     --platform linux/amd64 \
@@ -73,13 +103,18 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh 'kubectl apply -f kubernetes/'
+                sh '''
+                kubectl apply -f kubernetes/
+
+                kubectl rollout restart deployment staynest
+                '''
             }
         }
 
         stage('Verify Deployment') {
             steps {
                 sh 'kubectl get pods'
+                sh 'kubectl get svc'
                 sh 'kubectl get ingress'
             }
         }
