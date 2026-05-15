@@ -1,6 +1,14 @@
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(
+            name: 'DESTROY',
+            defaultValue: false,
+            description: 'Destroy complete infrastructure'
+        )
+    }
+
     environment {
         PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
         IMAGE = "vyshnavi1411/staynest:v3"
@@ -9,6 +17,7 @@ pipeline {
     }
 
     stages {
+
         stage('Terraform Init') {
             steps {
                 dir('terraform') {
@@ -18,6 +27,11 @@ pipeline {
         }
 
         stage('Terraform Apply') {
+
+            when {
+                expression { params.DESTROY == false }
+            }
+
             steps {
                 dir('terraform') {
                     sh 'terraform apply -auto-approve'
@@ -26,6 +40,11 @@ pipeline {
         }
 
         stage('Update kubeconfig') {
+
+            when {
+                expression { params.DESTROY == false }
+            }
+
             steps {
                 sh '''
                 aws eks update-kubeconfig \
@@ -36,6 +55,11 @@ pipeline {
         }
 
         stage('Install Ingress Controller') {
+
+            when {
+                expression { params.DESTROY == false }
+            }
+
             steps {
                 sh '''
                 kubectl apply -f \
@@ -44,34 +68,44 @@ pipeline {
             }
         }
 
-       stage('Create Kubernetes Secret') {
-    steps {
+        stage('Create Kubernetes Secret') {
 
-        withCredentials([
-            string(credentialsId: 'mongo-url', variable: 'MONGO_URL'),
-            string(credentialsId: 'mapbox-token', variable: 'MAPBOX_TOKEN'),
-            string(credentialsId: 'cloudinary-name', variable: 'CLOUD_NAME'),
-            string(credentialsId: 'cloudinary-key', variable: 'API_KEY'),
-            string(credentialsId: 'cloudinary-secret', variable: 'API_SECRET'),
-            string(credentialsId: 'session-secret', variable: 'SECRET')
-        ]) {
+            when {
+                expression { params.DESTROY == false }
+            }
 
-            sh '''
-            kubectl delete secret staynest-secret --ignore-not-found
+            steps {
 
-            kubectl create secret generic staynest-secret \
-            --from-literal=MONGO_URL=$MONGO_URL \
-            --from-literal=MAPBOX_TOKEN=$MAPBOX_TOKEN \
-            --from-literal=CLOUD_NAME=$CLOUD_NAME \
-            --from-literal=API_KEY=$API_KEY \
-            --from-literal=API_SECRET=$API_SECRET \
-            --from-literal=SECRET=$SECRET
-            '''
+                withCredentials([
+                    string(credentialsId: 'mongo-url', variable: 'MONGO_URL'),
+                    string(credentialsId: 'mapbox-token', variable: 'MAPBOX_TOKEN'),
+                    string(credentialsId: 'cloudinary-name', variable: 'CLOUD_NAME'),
+                    string(credentialsId: 'cloudinary-key', variable: 'API_KEY'),
+                    string(credentialsId: 'cloudinary-secret', variable: 'API_SECRET'),
+                    string(credentialsId: 'session-secret', variable: 'SECRET')
+                ]) {
+
+                    sh '''
+                    kubectl delete secret staynest-secret --ignore-not-found=true
+
+                    kubectl create secret generic staynest-secret \
+                    --from-literal=MONGO_URL=$MONGO_URL \
+                    --from-literal=MAPBOX_TOKEN=$MAPBOX_TOKEN \
+                    --from-literal=CLOUD_NAME=$CLOUD_NAME \
+                    --from-literal=API_KEY=$API_KEY \
+                    --from-literal=API_SECRET=$API_SECRET \
+                    --from-literal=SECRET=$SECRET
+                    '''
+                }
+            }
         }
-    }
-}
 
         stage('Build & Push Docker Image') {
+
+            when {
+                expression { params.DESTROY == false }
+            }
+
             steps {
 
                 withCredentials([usernamePassword(
@@ -96,6 +130,11 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes') {
+
+            when {
+                expression { params.DESTROY == false }
+            }
+
             steps {
                 sh '''
                 kubectl apply -f kubernetes/
@@ -106,10 +145,41 @@ pipeline {
         }
 
         stage('Verify Deployment') {
+
+            when {
+                expression { params.DESTROY == false }
+            }
+
             steps {
                 sh 'kubectl get pods'
                 sh 'kubectl get svc'
                 sh 'kubectl get ingress'
+            }
+        }
+
+        stage('Destroy Infrastructure') {
+
+            when {
+                expression { params.DESTROY == true }
+            }
+
+            steps {
+
+                input message: 'Are you sure you want to destroy all AWS and Kubernetes infrastructure?', ok: 'Destroy'
+
+                sh '''
+                kubectl delete -f kubernetes/ --ignore-not-found=true
+                '''
+
+                sh '''
+                kubectl delete -f \
+                https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml \
+                --ignore-not-found=true
+                '''
+
+                dir('terraform') {
+                    sh 'terraform destroy -auto-approve'
+                }
             }
         }
     }
