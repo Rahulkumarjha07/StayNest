@@ -68,14 +68,22 @@ pipeline {
             }
         }
 
-        stage('Install Ingress Controller') {
-            steps {
-                sh '''
-                kubectl apply -f \
-                https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
-                '''
-            }
-        }
+       stage('Install Ingress Controller') {
+    steps {
+        sh '''
+        kubectl apply -f \
+        https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+
+        echo "Waiting for ingress controller..."
+
+        kubectl wait \
+        --namespace ingress-nginx \
+        --for=condition=ready pod \
+        --selector=app.kubernetes.io/component=controller \
+        --timeout=300s
+        '''
+    }
+}
 
         stage('Create Kubernetes Secret') {
             steps {
