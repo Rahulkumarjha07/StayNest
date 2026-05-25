@@ -2,8 +2,7 @@ pipeline {
     agent any
 
     environment {
-        PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-        IMAGE = "vyshnavi1411/staynest:v3"
+        IMAGE = "rahuljha0007/staynest:v3"
         AWS_REGION = "us-east-1"
         CLUSTER_NAME = "staynest-cluster"
     }
@@ -19,16 +18,12 @@ pipeline {
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
 
-                    sh '''
-                    echo $DOCKER_PASS | docker login \
-                    -u $DOCKER_USER --password-stdin
+                    bat '''
+                    echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
 
-                    docker buildx create --use || true
+                    docker build -t %IMAGE% .
 
-                    docker buildx build \
-                    --platform linux/amd64 \
-                    -t $IMAGE \
-                    --push .
+                    docker push %IMAGE%
                     '''
                 }
             }
@@ -36,54 +31,64 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                sh 'cd terraform && terraform init'
+                bat '''
+                cd terraform
+                terraform init
+                '''
             }
         }
 
         stage('Terraform Validate') {
             steps {
-                sh 'cd terraform && terraform validate'
+                bat '''
+                cd terraform
+                terraform validate
+                '''
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                sh 'cd terraform && terraform plan'
+                bat '''
+                cd terraform
+                terraform plan
+                '''
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                sh 'cd terraform && terraform apply -auto-approve'
+                bat '''
+                cd terraform
+                terraform apply -auto-approve
+                '''
             }
         }
 
         stage('Update kubeconfig') {
             steps {
-                sh '''
-                aws eks update-kubeconfig \
-                --region $AWS_REGION \
-                --name $CLUSTER_NAME
+                bat '''
+                aws eks update-kubeconfig ^
+                --region %AWS_REGION% ^
+                --name %CLUSTER_NAME%
                 '''
             }
         }
 
-       stage('Install Ingress Controller') {
-    steps {
-        sh '''
-        kubectl apply -f \
-        https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+        stage('Install Ingress Controller') {
+            steps {
+                bat '''
+                kubectl apply -f ^
+                https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
 
-        echo "Waiting for ingress controller..."
-
-        kubectl wait \
-        --namespace ingress-nginx \
-        --for=condition=ready pod \
-        --selector=app.kubernetes.io/component=controller \
-        --timeout=300s
-        '''
-    }
-}
+                kubectl wait ^
+                --namespace ingress-nginx ^
+                --for=condition=ready pod ^
+                --selector=app.kubernetes.io/component=controller ^
+                --timeout=300s
+                '''
+            }
+        }
 
         stage('Create Kubernetes Secret') {
             steps {
@@ -97,16 +102,16 @@ pipeline {
                     string(credentialsId: 'session-secret', variable: 'SECRET')
                 ]) {
 
-                    sh '''
+                    bat '''
                     kubectl delete secret staynest-secret --ignore-not-found=true
 
-                    kubectl create secret generic staynest-secret \
-                    --from-literal=MONGO_URL=$MONGO_URL \
-                    --from-literal=MAPBOX_TOKEN=$MAPBOX_TOKEN \
-                    --from-literal=CLOUD_NAME=$CLOUD_NAME \
-                    --from-literal=API_KEY=$API_KEY \
-                    --from-literal=API_SECRET=$API_SECRET \
-                    --from-literal=SECRET=$SECRET
+                    kubectl create secret generic staynest-secret ^
+                    --from-literal=MONGO_URL=%MONGO_URL% ^
+                    --from-literal=MAPBOX_TOKEN=%MAPBOX_TOKEN% ^
+                    --from-literal=CLOUD_NAME=%CLOUD_NAME% ^
+                    --from-literal=API_KEY=%API_KEY% ^
+                    --from-literal=API_SECRET=%API_SECRET% ^
+                    --from-literal=SECRET=%SECRET%
                     '''
                 }
             }
@@ -114,7 +119,7 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh '''
+                bat '''
                 kubectl apply -f kubernetes/
 
                 kubectl rollout restart deployment staynest
@@ -124,10 +129,10 @@ pipeline {
 
         stage('Verify Deployment') {
             steps {
-                sh 'kubectl get nodes'
-                sh 'kubectl get pods'
-                sh 'kubectl get svc'
-                sh 'kubectl get ingress'
+                bat 'kubectl get nodes'
+                bat 'kubectl get pods'
+                bat 'kubectl get svc'
+                bat 'kubectl get ingress'
             }
         }
 
@@ -136,17 +141,20 @@ pipeline {
 
                 input 'Do you want to destroy infrastructure?'
 
-                sh '''
+                bat '''
                 kubectl delete -f kubernetes/ --ignore-not-found=true
                 '''
 
-                sh '''
-                kubectl delete -f \
-                https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml \
+                bat '''
+                kubectl delete -f ^
+                https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml ^
                 --ignore-not-found=true
                 '''
 
-                sh 'cd terraform && terraform destroy -auto-approve'
+                bat '''
+                cd terraform
+                terraform destroy -auto-approve
+                '''
             }
         }
     }

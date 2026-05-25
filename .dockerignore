@@ -1,21 +1,22 @@
 node_modules
-.env
 npm-debug.log
-
 .git
 .gitignore
+Dockerfile
+.dockerignore
+
+.env
 
 .vscode
 .idea
 
-uploads/*
-*.log
-*.tmp
+uploads
 
 dist
 coverage
 
+*.log
+*.tmp
 *.sqlite
 
-Dockerfile
 README.md
