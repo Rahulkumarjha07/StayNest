@@ -18,12 +18,12 @@ pipeline {
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
 
-                    bat '''
-                    echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                    sh '''
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
 
-                    docker build -t %IMAGE% .
+                    docker build -t $IMAGE .
 
-                    docker push %IMAGE%
+                    docker push $IMAGE
                     '''
                 }
             }
@@ -31,7 +31,7 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                bat '''
+                sh '''
                 cd terraform
                 terraform init
                 '''
@@ -40,7 +40,7 @@ pipeline {
 
         stage('Terraform Validate') {
             steps {
-                bat '''
+                sh '''
                 cd terraform
                 terraform validate
                 '''
@@ -49,7 +49,7 @@ pipeline {
 
         stage('Terraform Plan') {
             steps {
-                bat '''
+                sh '''
                 cd terraform
                 terraform plan
                 '''
@@ -58,7 +58,7 @@ pipeline {
 
         stage('Terraform Apply') {
             steps {
-                bat '''
+                sh '''
                 cd terraform
                 terraform apply -auto-approve
                 '''
@@ -67,24 +67,24 @@ pipeline {
 
         stage('Update kubeconfig') {
             steps {
-                bat '''
-                aws eks update-kubeconfig ^
-                --region %AWS_REGION% ^
-                --name %CLUSTER_NAME%
+                sh '''
+                aws eks update-kubeconfig \
+                --region $AWS_REGION \
+                --name $CLUSTER_NAME
                 '''
             }
         }
 
         stage('Install Ingress Controller') {
             steps {
-                bat '''
-                kubectl apply -f ^
+                sh '''
+                kubectl apply -f \
                 https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
 
-                kubectl wait ^
-                --namespace ingress-nginx ^
-                --for=condition=ready pod ^
-                --selector=app.kubernetes.io/component=controller ^
+                kubectl wait \
+                --namespace ingress-nginx \
+                --for=condition=ready pod \
+                --selector=app.kubernetes.io/component=controller \
                 --timeout=300s
                 '''
             }
@@ -102,16 +102,16 @@ pipeline {
                     string(credentialsId: 'session-secret', variable: 'SECRET')
                 ]) {
 
-                    bat '''
+                    sh '''
                     kubectl delete secret staynest-secret --ignore-not-found=true
 
-                    kubectl create secret generic staynest-secret ^
-                    --from-literal=MONGO_URL=%MONGO_URL% ^
-                    --from-literal=MAPBOX_TOKEN=%MAPBOX_TOKEN% ^
-                    --from-literal=CLOUD_NAME=%CLOUD_NAME% ^
-                    --from-literal=API_KEY=%API_KEY% ^
-                    --from-literal=API_SECRET=%API_SECRET% ^
-                    --from-literal=SECRET=%SECRET%
+                    kubectl create secret generic staynest-secret \
+                    --from-literal=MONGO_URL=$MONGO_URL \
+                    --from-literal=MAPBOX_TOKEN=$MAPBOX_TOKEN \
+                    --from-literal=CLOUD_NAME=$CLOUD_NAME \
+                    --from-literal=API_KEY=$API_KEY \
+                    --from-literal=API_SECRET=$API_SECRET \
+                    --from-literal=SECRET=$SECRET
                     '''
                 }
             }
@@ -119,7 +119,7 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                bat '''
+                sh '''
                 kubectl apply -f kubernetes/
 
                 kubectl rollout restart deployment staynest
@@ -129,10 +129,10 @@ pipeline {
 
         stage('Verify Deployment') {
             steps {
-                bat 'kubectl get nodes'
-                bat 'kubectl get pods'
-                bat 'kubectl get svc'
-                bat 'kubectl get ingress'
+                sh 'kubectl get nodes'
+                sh 'kubectl get pods'
+                sh 'kubectl get svc'
+                sh 'kubectl get ingress'
             }
         }
 
@@ -141,17 +141,17 @@ pipeline {
 
                 input 'Do you want to destroy infrastructure?'
 
-                bat '''
+                sh '''
                 kubectl delete -f kubernetes/ --ignore-not-found=true
                 '''
 
-                bat '''
-                kubectl delete -f ^
-                https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml ^
+                sh '''
+                kubectl delete -f \
+                https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml \
                 --ignore-not-found=true
                 '''
 
-                bat '''
+                sh '''
                 cd terraform
                 terraform destroy -auto-approve
                 '''
