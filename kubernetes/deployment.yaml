@@ -20,7 +20,7 @@ spec:
       containers:
       - name: staynest
 
-        image: rahuljha0007/staynest:v2
+        image: rahuljha0007/staynest:v3
 
         ports:
         - containerPort: 3000
