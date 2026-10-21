@@ -135,7 +135,12 @@ stage('Install Ingress Controller') {
 
 
         stage('Create Kubernetes Secret') {
-            steps {
+            steps 
+             withCredentials([
+                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ])
+            {
 
                 withCredentials([
                     string(credentialsId: 'mongo-url', variable: 'MONGO_URL'),
@@ -162,7 +167,12 @@ stage('Install Ingress Controller') {
         }
 
         stage('Deploy to Kubernetes') {
-            steps {
+            steps 
+             withCredentials([
+                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ])
+            {
 
                 sh '''
                 kubectl apply -f kubernetes/
@@ -173,7 +183,12 @@ stage('Install Ingress Controller') {
         }
 
         stage('Verify Deployment') {
-            steps {
+            steps 
+             withCredentials([
+                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ])
+            {
 
                 sh 'kubectl get nodes'
                 sh 'kubectl get pods'
@@ -183,7 +198,9 @@ stage('Install Ingress Controller') {
         }
 
         stage('Destroy Infrastructure') {
-            steps {
+            steps
+             
+            {
 
                 input 'Do you want to destroy infrastructure?'
 
