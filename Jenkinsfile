@@ -5,11 +5,13 @@ pipeline {
     environment {
         IMAGE = "rahuljha0007/staynest:v3"
         AWS_REGION = "us-east-1"
+        AWS_DEFAULT_REGION = "us-east-1"
         CLUSTER_NAME = "staynest-cluster"
         PATH = "/usr/bin:/usr/local/bin:${env.PATH}"
     }
 
     stages {
+
         stage('Docker Build & Push') {
             steps {
                 withCredentials([
@@ -21,9 +23,11 @@ pipeline {
                 ]) {
                     sh '''
                         set -e
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        echo "$DOCKER_PASS" | docker login \
+                            -u "$DOCKER_USER" --password-stdin
                         docker build -t "$IMAGE" .
                         docker push "$IMAGE"
+                        docker logout
                     '''
                 }
             }
@@ -32,11 +36,17 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    string(credentialsId: 'aws-access-key',
+                           variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key',
+                           variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
                     dir('terraform') {
-                        sh 'terraform init'
+                        sh '''
+                            set -e
+                            aws sts get-caller-identity
+                            terraform init
+                        '''
                     }
                 }
             }
@@ -53,11 +63,16 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    string(credentialsId: 'aws-access-key',
+                           variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key',
+                           variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
                     dir('terraform') {
-                        sh 'terraform plan'
+                        sh '''
+                            set -e
+                            terraform plan -out=tfplan
+                        '''
                     }
                 }
             }
@@ -66,11 +81,16 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    string(credentialsId: 'aws-access-key',
+                           variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key',
+                           variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
                     dir('terraform') {
-                        sh 'terraform apply -auto-approve'
+                        sh '''
+                            set -e
+                            terraform apply -auto-approve tfplan
+                        '''
                     }
                 }
             }
@@ -79,14 +99,19 @@ pipeline {
         stage('Update kubeconfig') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    string(credentialsId: 'aws-access-key',
+                           variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key',
+                           variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
                     sh '''
                         set -e
+                        aws sts get-caller-identity
+
                         aws eks update-kubeconfig \
                             --region "$AWS_REGION" \
                             --name "$CLUSTER_NAME"
+
                         kubectl get nodes
                     '''
                 }
@@ -96,17 +121,20 @@ pipeline {
         stage('Install Ingress Controller') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    string(credentialsId: 'aws-access-key',
+                           variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key',
+                           variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
                     sh '''
                         set -e
+
                         aws eks update-kubeconfig \
                             --region "$AWS_REGION" \
                             --name "$CLUSTER_NAME"
 
                         kubectl apply -f \
-                            https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+                          https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
 
                         kubectl wait \
                             --namespace ingress-nginx \
@@ -121,17 +149,26 @@ pipeline {
         stage('Create Kubernetes Secret') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY'),
-                    string(credentialsId: 'mongo-url', variable: 'MONGO_URL'),
-                    string(credentialsId: 'mapbox-token', variable: 'MAPBOX_TOKEN'),
-                    string(credentialsId: 'cloudinary-name', variable: 'CLOUD_NAME'),
-                    string(credentialsId: 'cloudinary-key', variable: 'API_KEY'),
-                    string(credentialsId: 'cloudinary-secret', variable: 'API_SECRET'),
-                    string(credentialsId: 'session-secret', variable: 'SECRET')
+                    string(credentialsId: 'aws-access-key',
+                           variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key',
+                           variable: 'AWS_SECRET_ACCESS_KEY'),
+                    string(credentialsId: 'mongo-url',
+                           variable: 'MONGO_URL'),
+                    string(credentialsId: 'mapbox-token',
+                           variable: 'MAPBOX_TOKEN'),
+                    string(credentialsId: 'cloudinary-name',
+                           variable: 'CLOUD_NAME'),
+                    string(credentialsId: 'cloudinary-key',
+                           variable: 'API_KEY'),
+                    string(credentialsId: 'cloudinary-secret',
+                           variable: 'API_SECRET'),
+                    string(credentialsId: 'session-secret',
+                           variable: 'SECRET')
                 ]) {
                     sh '''
                         set -e
+
                         aws eks update-kubeconfig \
                             --region "$AWS_REGION" \
                             --name "$CLUSTER_NAME"
@@ -153,18 +190,24 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    string(credentialsId: 'aws-access-key',
+                           variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key',
+                           variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
                     sh '''
                         set -e
+
                         aws eks update-kubeconfig \
                             --region "$AWS_REGION" \
                             --name "$CLUSTER_NAME"
 
                         kubectl apply -f kubernetes/
+
                         kubectl rollout restart deployment/staynest
-                        kubectl rollout status deployment/staynest --timeout=300s
+
+                        kubectl rollout status deployment/staynest \
+                            --timeout=300s
                     '''
                 }
             }
@@ -173,19 +216,23 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    string(credentialsId: 'aws-access-key',
+                           variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key',
+                           variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
                     sh '''
                         set -e
+
                         aws eks update-kubeconfig \
                             --region "$AWS_REGION" \
                             --name "$CLUSTER_NAME"
 
                         kubectl get nodes
-                        kubectl get pods
-                        kubectl get svc
-                        kubectl get ingress
+                        kubectl get pods -A
+                        kubectl get svc -A
+                        kubectl get ingress -A
+                        kubectl get deployment staynest
                     '''
                 }
             }
@@ -193,24 +240,37 @@ pipeline {
 
         stage('Destroy Infrastructure') {
             steps {
-                input message: 'Do you want to destroy infrastructure?'
+                input message: 'Do you want to destroy StayNest infrastructure?'
 
                 withCredentials([
-                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    string(credentialsId: 'aws-access-key',
+                           variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key',
+                           variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
                     sh '''
                         set -e
+
+                        aws sts get-caller-identity
+
                         aws eks update-kubeconfig \
                             --region "$AWS_REGION" \
                             --name "$CLUSTER_NAME"
 
-                        kubectl delete -f kubernetes/ --ignore-not-found=true
-
-                        kubectl delete -f \
-                            https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml \
+                        # Delete the application secret explicitly.
+                        kubectl delete secret staynest-secret \
                             --ignore-not-found=true
 
+                        # Remove application resources.
+                        kubectl delete -f kubernetes/ \
+                            --ignore-not-found=true
+
+                        # Remove the ingress controller.
+                        kubectl delete -f \
+                          https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml \
+                          --ignore-not-found=true
+
+                        # Destroy Terraform-managed infrastructure.
                         cd terraform
                         terraform destroy -auto-approve
                     '''
