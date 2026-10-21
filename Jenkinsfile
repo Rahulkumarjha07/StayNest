@@ -25,8 +25,10 @@ pipeline {
                         set -e
                         echo "$DOCKER_PASS" | docker login \
                             -u "$DOCKER_USER" --password-stdin
+
                         docker build -t "$IMAGE" .
                         docker push "$IMAGE"
+
                         docker logout
                     '''
                 }
@@ -44,7 +46,6 @@ pipeline {
                     dir('terraform') {
                         sh '''
                             set -e
-                            aws sts get-caller-identity
                             terraform init
                         '''
                     }
@@ -106,6 +107,7 @@ pipeline {
                 ]) {
                     sh '''
                         set -e
+
                         aws sts get-caller-identity
 
                         aws eks update-kubeconfig \
@@ -257,20 +259,13 @@ pipeline {
                             --region "$AWS_REGION" \
                             --name "$CLUSTER_NAME"
 
-                        # Delete the application secret explicitly.
-                        kubectl delete secret staynest-secret \
-                            --ignore-not-found=true
-
-                        # Remove application resources.
                         kubectl delete -f kubernetes/ \
                             --ignore-not-found=true
 
-                        # Remove the ingress controller.
                         kubectl delete -f \
                           https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml \
                           --ignore-not-found=true
 
-                        # Destroy Terraform-managed infrastructure.
                         cd terraform
                         terraform destroy -auto-approve
                     '''
