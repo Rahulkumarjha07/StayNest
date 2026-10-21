@@ -110,22 +110,29 @@ pipeline {
                 }
             }
         }
+stage('Install Ingress Controller') {
+    steps {
+        withCredentials([
+            string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+            string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+        ]) {
+            sh '''
+                aws eks update-kubeconfig \
+                  --region "$AWS_REGION" \
+                  --name "$CLUSTER_NAME"
 
-        stage('Install Ingress Controller') {
-            steps {
-
-                sh '''
-                kubectl apply -f \
-                https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+                kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
 
                 kubectl wait \
-                --namespace ingress-nginx \
-                --for=condition=ready pod \
-                --selector=app.kubernetes.io/component=controller \
-                --timeout=300s
-                '''
-            }
+                  --namespace ingress-nginx \
+                  --for=condition=ready pod \
+                  --selector=app.kubernetes.io/component=controller \
+                  --timeout=300s
+            '''
         }
+    }
+}
+
 
         stage('Create Kubernetes Secret') {
             steps {
