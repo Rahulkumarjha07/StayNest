@@ -9,8 +9,8 @@ pipeline {
         PATH = "/usr/bin:/usr/local/bin:${env.PATH}"
         
         // Globally bind the AWS credentials for all stages
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
+        AWS_ACCESS_KEY_ID = credentials('AWS_CREDS')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_CREDS')
     }
 
     stages {
