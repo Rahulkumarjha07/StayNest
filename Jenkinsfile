@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
 
@@ -9,22 +10,20 @@ pipeline {
     }
 
     stages {
-
         stage('Docker Build & Push') {
             steps {
-
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
                     sh '''
-                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-
-                    docker build -t $IMAGE .
-
-                    docker push $IMAGE
+                        set -e
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker build -t "$IMAGE" .
+                        docker push "$IMAGE"
                     '''
                 }
             }
@@ -32,117 +31,98 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-
                 withCredentials([
                     string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
-
-                    sh '''
-                    cd terraform
-                    terraform init
-                    '''
+                    dir('terraform') {
+                        sh 'terraform init'
+                    }
                 }
             }
         }
 
         stage('Terraform Validate') {
             steps {
-
-                withCredentials([
-                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                ]) {
-
-                    sh '''
-                    cd terraform
-                    terraform validate
-                    '''
+                dir('terraform') {
+                    sh 'terraform validate'
                 }
             }
         }
 
         stage('Terraform Plan') {
             steps {
-
                 withCredentials([
                     string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
-
-                    sh '''
-                    cd terraform
-                    terraform plan
-                    '''
+                    dir('terraform') {
+                        sh 'terraform plan'
+                    }
                 }
             }
         }
 
         stage('Terraform Apply') {
             steps {
-
                 withCredentials([
                     string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
-
-                    sh '''
-                    cd terraform
-                    terraform apply -auto-approve
-                    '''
+                    dir('terraform') {
+                        sh 'terraform apply -auto-approve'
+                    }
                 }
             }
         }
 
         stage('Update kubeconfig') {
             steps {
-
                 withCredentials([
                     string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
-
                     sh '''
-                    aws eks update-kubeconfig \
-                    --region $AWS_REGION \
-                    --name $CLUSTER_NAME
+                        set -e
+                        aws eks update-kubeconfig \
+                            --region "$AWS_REGION" \
+                            --name "$CLUSTER_NAME"
+                        kubectl get nodes
                     '''
                 }
             }
         }
-stage('Install Ingress Controller') {
-    steps {
-        withCredentials([
-            string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
-            string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
-        ]) {
-            sh '''
-                aws eks update-kubeconfig \
-                  --region "$AWS_REGION" \
-                  --name "$CLUSTER_NAME"
 
-                kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
-
-                kubectl wait \
-                  --namespace ingress-nginx \
-                  --for=condition=ready pod \
-                  --selector=app.kubernetes.io/component=controller \
-                  --timeout=300s
-            '''
-        }
-    }
-}
-
-
-        stage('Create Kubernetes Secret') {
-            steps 
-             withCredentials([
+        stage('Install Ingress Controller') {
+            steps {
+                withCredentials([
                     string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                ])
-            {
+                ]) {
+                    sh '''
+                        set -e
+                        aws eks update-kubeconfig \
+                            --region "$AWS_REGION" \
+                            --name "$CLUSTER_NAME"
 
+                        kubectl apply -f \
+                            https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+
+                        kubectl wait \
+                            --namespace ingress-nginx \
+                            --for=condition=ready pod \
+                            --selector=app.kubernetes.io/component=controller \
+                            --timeout=300s
+                    '''
+                }
+            }
+        }
+
+        stage('Create Kubernetes Secret') {
+            steps {
                 withCredentials([
+                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY'),
                     string(credentialsId: 'mongo-url', variable: 'MONGO_URL'),
                     string(credentialsId: 'mapbox-token', variable: 'MAPBOX_TOKEN'),
                     string(credentialsId: 'cloudinary-name', variable: 'CLOUD_NAME'),
@@ -150,78 +130,89 @@ stage('Install Ingress Controller') {
                     string(credentialsId: 'cloudinary-secret', variable: 'API_SECRET'),
                     string(credentialsId: 'session-secret', variable: 'SECRET')
                 ]) {
-
                     sh '''
-                    kubectl delete secret staynest-secret --ignore-not-found=true
+                        set -e
+                        aws eks update-kubeconfig \
+                            --region "$AWS_REGION" \
+                            --name "$CLUSTER_NAME"
 
-                    kubectl create secret generic staynest-secret \
-                    --from-literal=MONGO_URL="$MONGO_URL" \
-                    --from-literal=MAPBOX_TOKEN="$MAPBOX_TOKEN" \
-                    --from-literal=CLOUD_NAME="$CLOUD_NAME" \
-                    --from-literal=API_KEY="$API_KEY" \
-                    --from-literal=API_SECRET="$API_SECRET" \
-                    --from-literal=SECRET="$SECRET"
+                        kubectl create secret generic staynest-secret \
+                            --dry-run=client -o yaml \
+                            --from-literal=MONGO_URL="$MONGO_URL" \
+                            --from-literal=MAPBOX_TOKEN="$MAPBOX_TOKEN" \
+                            --from-literal=CLOUD_NAME="$CLOUD_NAME" \
+                            --from-literal=API_KEY="$API_KEY" \
+                            --from-literal=API_SECRET="$API_SECRET" \
+                            --from-literal=SECRET="$SECRET" \
+                            | kubectl apply -f -
                     '''
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
-            steps 
-             withCredentials([
+            steps {
+                withCredentials([
                     string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                ])
-            {
+                ]) {
+                    sh '''
+                        set -e
+                        aws eks update-kubeconfig \
+                            --region "$AWS_REGION" \
+                            --name "$CLUSTER_NAME"
 
-                sh '''
-                kubectl apply -f kubernetes/
-
-                kubectl rollout restart deployment staynest
-                '''
+                        kubectl apply -f kubernetes/
+                        kubectl rollout restart deployment/staynest
+                        kubectl rollout status deployment/staynest --timeout=300s
+                    '''
+                }
             }
         }
 
         stage('Verify Deployment') {
-            steps 
-             withCredentials([
+            steps {
+                withCredentials([
                     string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                ])
-            {
+                ]) {
+                    sh '''
+                        set -e
+                        aws eks update-kubeconfig \
+                            --region "$AWS_REGION" \
+                            --name "$CLUSTER_NAME"
 
-                sh 'kubectl get nodes'
-                sh 'kubectl get pods'
-                sh 'kubectl get svc'
-                sh 'kubectl get ingress'
+                        kubectl get nodes
+                        kubectl get pods
+                        kubectl get svc
+                        kubectl get ingress
+                    '''
+                }
             }
         }
 
         stage('Destroy Infrastructure') {
-            steps
-             
-            {
-
-                input 'Do you want to destroy infrastructure?'
-
-                sh '''
-                kubectl delete -f kubernetes/ --ignore-not-found=true
-                '''
-
-                sh '''
-                kubectl delete -f \
-                https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml \
-                --ignore-not-found=true
-                '''
+            steps {
+                input message: 'Do you want to destroy infrastructure?'
 
                 withCredentials([
                     string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
-
                     sh '''
-                    cd terraform
-                    terraform destroy -auto-approve
+                        set -e
+                        aws eks update-kubeconfig \
+                            --region "$AWS_REGION" \
+                            --name "$CLUSTER_NAME"
+
+                        kubectl delete -f kubernetes/ --ignore-not-found=true
+
+                        kubectl delete -f \
+                            https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml \
+                            --ignore-not-found=true
+
+                        cd terraform
+                        terraform destroy -auto-approve
                     '''
                 }
             }
